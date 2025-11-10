@@ -51,7 +51,17 @@
 
     footer{margin-top:28px;color:var(--muted);font-size:.9rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
     a{color:var(--accent);text-decoration:none}
-    .kbd{font-family:var(--mono);border:1px solid var(--border);padding:2px 6px;border-radius:6px;background:#0b0f14}
+  .kbd{font-family:var(--mono);border:1px solid var(--border);padding:2px 6px;border-radius:6px;background:#0b0f14}
+  /* Inline spinner for Send button */
+  .btn-spinner{display:inline-block;width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,0.08);border-top-color:var(--accent);animation:spin 1s linear infinite;margin-left:10px;vertical-align:middle}
+  .btn-spinner.hidden{display:none}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  /* Toast notifications */
+  .toast{position:fixed;right:20px;bottom:20px;min-width:180px;max-width:320px;padding:10px 14px;border-radius:10px;background:linear-gradient(180deg,#0f1317,#0b1013);color:var(--text);box-shadow:0 8px 30px rgba(0,0,0,.45);transform:translateY(18px);opacity:0;pointer-events:none;transition:transform .25s cubic-bezier(.2,.9,.2,1),opacity .25s ease,box-shadow .2s}
+  .toast.show{transform:translateY(0);opacity:1;pointer-events:auto}
+  .toast.ok{border-left:4px solid var(--ok)}
+  .toast.bad{border-left:4px solid var(--bad)}
+  .toast .msg{font-family:var(--sans);font-size:.95rem}
   </style>
 </head>
 <body>
@@ -94,7 +104,7 @@
           <div class="label">Request body (JSON)</div>
           <textarea id="body" rows="8" placeholder='{"detail":"full"}'></textarea>
           <div class="toolbar" style="margin-top:10px">
-            <button class="btn" id="send">Send (⏎)</button>
+            <button class="btn" id="send">Send (⏎) <span class="btn-spinner hidden" aria-hidden="true"></span></button>
             <button class="btn ghost" id="clear">Clear</button>
             <button class="btn ghost" id="copyCurl">Copy as cURL</button>
           </div>
@@ -120,6 +130,10 @@
     </footer>
   </div>
 
+  <!-- loader overlay removed in favor of inline spinner inside Send button -->
+  <!-- Toast notification -->
+  <div id="toast" class="toast" aria-hidden="true"><div class="msg" id="toastMsg"></div></div>
+
   <script>
     const qs = sel => document.querySelector(sel);
     const baseEl = qs('#baseUrl');
@@ -132,16 +146,43 @@
     const hist = qs('#history');
     const status = qs('#status');
 
-    const EXAMPLE_CMDS = ["/api/about/","/api/skills/","/api/projects/","/api/resume/","/api/random-fact/","/api/hireme/"];
+  // Hardcoded Render base URL (as requested)
+  const HARDCODED_BASE = 'https://api-portfolio-backend-zhrv.onrender.com';
+  const EXAMPLE_CMDS = ["/api/about/","/api/skills/","/api/projects/","/api/resume/","/api/random-fact/","/api/hireme/"];
 
-    // Persist base URL & last endpoint
-    baseEl.value = localStorage.getItem('baseUrl') || '';
-    epEl.value = localStorage.getItem('endpoint') || '/api/about/';
-    bodyEl.value = localStorage.getItem('body') || '{"detail":"full"}';
+  // Persist base URL & last endpoint. Base is pre-filled with the Render URL and persisted.
+  baseEl.value = localStorage.getItem('baseUrl') || HARDCODED_BASE;
+  // ensure persistence and make it clear it's fixed in this UI
+  localStorage.setItem('baseUrl', baseEl.value);
+  try { baseEl.readOnly = true; baseEl.title = 'Base URL hardcoded to Render (change in code if needed)'; } catch(e){}
+  epEl.value = localStorage.getItem('endpoint') || '/api/about/';
+  bodyEl.value = localStorage.getItem('body') || '{"detail":"full"}';
 
-    baseEl.addEventListener('input', () => localStorage.setItem('baseUrl', baseEl.value.trim()));
-    epEl.addEventListener('input', () => localStorage.setItem('endpoint', epEl.value.trim()));
-    bodyEl.addEventListener('input', () => localStorage.setItem('body', bodyEl.value));
+  // Keep endpoint/body persisted when edited
+  baseEl.addEventListener('input', () => localStorage.setItem('baseUrl', baseEl.value.trim()));
+  epEl.addEventListener('input', () => localStorage.setItem('endpoint', epEl.value.trim()));
+  bodyEl.addEventListener('input', () => localStorage.setItem('body', bodyEl.value));
+
+  // Inline spinner inside Send button
+  const spinnerEl = qs('#send .btn-spinner');
+  function showLoader(){ if(spinnerEl){ spinnerEl.classList.remove('hidden'); spinnerEl.setAttribute('aria-hidden','false'); } sendBtn.disabled = true; }
+  function hideLoader(){ if(spinnerEl){ spinnerEl.classList.add('hidden'); spinnerEl.setAttribute('aria-hidden','true'); } sendBtn.disabled = false; }
+  // Toast element & helpers
+  const toastEl = qs('#toast');
+  const toastMsg = qs('#toastMsg');
+  let toastTimer = null;
+  function showToast(message, ok=true, duration=3200){
+    if(!toastEl) return;
+    toastEl.classList.remove('ok','bad');
+    toastEl.classList.add(ok? 'ok' : 'bad');
+    if(toastMsg) toastMsg.textContent = message;
+    toastEl.classList.add('show');
+    toastEl.setAttribute('aria-hidden','false');
+    if(toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>{ toastEl.classList.remove('show'); toastEl.setAttribute('aria-hidden','true'); toastTimer = null; }, duration);
+  }
+  // allow click to dismiss
+  if(toastEl) toastEl.addEventListener('click', ()=>{ if(toastTimer) clearTimeout(toastTimer); toastEl.classList.remove('show'); toastEl.setAttribute('aria-hidden','true'); toastTimer = null; });
 
     function setStatus(text, ok=true){
       status.textContent = text;
@@ -195,16 +236,20 @@
       if(!/^https?:\/\//.test(url)){
         setStatus('invalid base url', false);
         print(logBlock('Error', 'Please set a valid Base URL like https://your-backend.onrender.com', 'bad'));
+        showToast('Invalid Base URL', false);
         return;
       }
+      showLoader();
       setStatus('sending…');
       let data=null;
       const raw = bodyEl.value.trim();
       if(raw){
         try { data = JSON.parse(raw); }
         catch(e){
+          hideLoader();
           setStatus('bad json', false);
           print(logBlock('JSON Parse Error', String(e), 'bad'));
+          showToast('Bad JSON — check request body', false);
           return;
         }
       }
@@ -217,7 +262,8 @@
         let parsed; let asJson = false;
         try { parsed = JSON.parse(text); asJson = true; } catch { parsed = text; }
         const head = `${res.status} ${res.statusText} • ${ms}ms`;
-        setStatus(res.ok? 'ok' : `error ${res.status}`, res.ok);
+  setStatus(res.ok? 'ok' : `error ${res.status}`, res.ok);
+  showToast(head, res.ok);
         const reqPreview = pretty(data ?? {});
         const resPreview = asJson ? pretty(parsed) : parsed;
         print(
@@ -228,17 +274,21 @@
       }catch(err){
         setStatus('network error', false);
         print(logBlock('Network Error', String(err), 'bad'));
+        showToast('Network error', false);
+      }finally{
+        hideLoader();
       }
     }
 
     sendBtn.addEventListener('click', send);
-    clearBtn.addEventListener('click', ()=>{out.textContent=''; setStatus('idle');});
+    clearBtn.addEventListener('click', ()=>{out.textContent=''; setStatus('idle'); showToast('Console cleared', true);});
     curlBtn.addEventListener('click', ()=>{
       const url = buildUrl();
       const body = bodyEl.value.trim() || '{}';
       const cmd = `curl -X POST ${url} -H "Content-Type: application/json" -d '${body.replace(/'/g,"'\\''")}'`;
       navigator.clipboard.writeText(cmd);
       setStatus('copied curl');
+      showToast('Copied cURL', true);
     });
 
     document.addEventListener('keydown', (e)=>{
