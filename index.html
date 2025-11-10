@@ -20,13 +20,26 @@
     .brand{display:flex;gap:14px;align-items:center}
     .dot{width:10px;height:10px;border-radius:999px;background:var(--ok);box-shadow:0 0 16px var(--ok)}
     .title{font-weight:700;letter-spacing:.3px}
-    .card{background:linear-gradient(180deg,var(--panel) 0%, var(--panel-2) 100%);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+  /* Cards use flex column so their internal rows keep shape on resize */
+  .card{display:flex;flex-direction:column;justify-content:flex-start;background:linear-gradient(180deg,var(--panel) 0%, var(--panel-2) 100%);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);min-height:420px}
     .subtle{color:var(--muted)}
-    .grid{display:grid;gap:16px}
+    .grid{display:grid;gap:16px;align-items:stretch}
     @media(min-width:900px){.grid{grid-template-columns:1.1fr .9fr}}
+    /* Responsive adjustments for card min-height */
+    @media(max-width:900px){
+      .card{min-height:360px}
+    }
+    @media(max-width:600px){
+      /* On narrow screens avoid forcing large height */
+      .card{min-height:0}
+    }
 
-    .row{padding:18px;border-bottom:1px dashed var(--border)}
-    .row:last-child{border-bottom:0}
+  .row{padding:18px;border-bottom:1px dashed var(--border);flex:0 0 auto}
+  .row:last-child{border-bottom:0}
+  /* Allow console area to flex inside the card without altering card shape */
+  .card .console{flex:1 1 auto;min-height:0}
+  /* Make history scroll if it grows too tall */
+  .history{display:flex;gap:8px;flex-wrap:wrap;max-height:140px;overflow:auto;padding-right:6px}
 
     .label{font-size:.85rem;color:var(--muted);margin-bottom:8px}
     input, textarea, select{width:100%;background:#0b0f14;color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;font-family:var(--mono);font-size:.95rem;outline:none}
