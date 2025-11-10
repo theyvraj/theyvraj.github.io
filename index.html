@@ -15,7 +15,7 @@
     *{box-sizing:border-box}
     html,body{height:100%}
     body{margin:0;background:linear-gradient(180deg,#0b0d10 0%, #0b0d10 60%, #0d1117 100%);color:var(--text);font-family:var(--sans);}
-    .wrap{max-width:980px;margin:0 auto;padding:32px}
+    .wrap{max-width:1200px;margin:0 auto;padding:24px}
     header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
     .brand{display:flex;gap:14px;align-items:center}
     .dot{width:10px;height:10px;border-radius:999px;background:var(--ok);box-shadow:0 0 16px var(--ok)}
@@ -44,9 +44,12 @@
     .label{font-size:.85rem;color:var(--muted);margin-bottom:8px}
     input, textarea, select{width:100%;background:#0b0f14;color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;font-family:var(--mono);font-size:.95rem;outline:none}
     input:focus, textarea:focus, select:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(110,168,254,.08)}
+    #endpoint{min-width:0;flex:1} /* Allow endpoint input to shrink if needed but take available space */
 
-    .toolbar{display:flex;gap:10px;align-items:center}
-    .btn{appearance:none;border:1px solid var(--border);background:linear-gradient(180deg,#131922 0%,#0e131a 100%);color:var(--text);padding:10px 14px;border-radius:12px;font-weight:600;cursor:pointer;transition:.2s;box-shadow:0 3px 12px rgba(0,0,0,.25)}
+    /* Give toolbars more room for buttons and ensure they don't wrap unexpectedly */
+    .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:nowrap;margin:0 -4px}
+    .toolbar > *{margin:0 4px} /* Space out toolbar items */
+    .btn{appearance:none;border:1px solid var(--border);background:linear-gradient(180deg,#131922 0%,#0e131a 100%);color:var(--text);padding:10px 14px;border-radius:12px;font-weight:600;cursor:pointer;transition:.2s;box-shadow:0 3px 12px rgba(0,0,0,.25);min-width:max-content}
     .btn:hover{transform:translateY(-1px);border-color:#273241}
     .btn.primary{border-color:#2b4a7a;background:linear-gradient(180deg,#1a3a64 0%,#142b47 100%)}
     .btn.ghost{background:transparent}
@@ -60,7 +63,7 @@
     .hint code{background:#0b0f14;border:1px solid var(--border);padding:6px 10px;border-radius:10px}
 
     .history{display:flex;gap:8px;flex-wrap:wrap}
-    .pill{padding:8px 12px;border:1px solid var(--border);border-radius:999px;font-family:var(--mono);cursor:pointer}
+    .pill{padding:8px 12px;border:1px solid var(--border);border-radius:999px;font-family:var(--mono);cursor:pointer;white-space:nowrap}
 
     footer{margin-top:28px;color:var(--muted);font-size:.9rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
     a{color:var(--accent);text-decoration:none}
